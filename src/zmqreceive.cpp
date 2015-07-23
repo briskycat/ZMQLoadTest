@@ -43,7 +43,8 @@ int main(int argc, char* argv[])
 
             socket.setsockopt(ZMQ_SUBSCRIBE, topic.c_str(), topic.length());
 
-            std::chrono::steady_clock::time_point timeOfLastMessage = std::chrono::steady_clock::now();
+            std::chrono::steady_clock::time_point timeOfLastMessage = std::chrono::steady_clock::now(), start = std::chrono::steady_clock::now();
+            uint64_t totalBytesReceived = 0;
             while (context != nullptr) {
                 zmq::message_t mcMsg;
                 if (!socket.recv(&mcMsg)) {
@@ -54,8 +55,15 @@ int main(int argc, char* argv[])
                     if(!elapsedMicroseconds.count())
                         elapsedMicroseconds = std::chrono::microseconds(1);
 
+                    std::chrono::microseconds totalElapsedMicroseconds = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start);
+                    if(!totalElapsedMicroseconds.count())
+                        totalElapsedMicroseconds = std::chrono::microseconds(1);
+
+                    totalBytesReceived += mcMsg.size();
+
                     log->trace() << "received a multicast message with " << mcMsg.size() << " bytes";
                     log->trace() << "current rate = " << (mcMsg.size() * 8ULL * 1000ULL) / elapsedMicroseconds.count() << " kilobits per second";
+                    log->trace() << "avarage rate = " << (totalBytesReceived * 8ULL * 1000ULL) / totalElapsedMicroseconds.count() << " kilobits per second";
                     timeOfLastMessage = std::chrono::steady_clock::now();
                 }
             }
